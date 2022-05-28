@@ -1,7 +1,7 @@
 {
   "name": "djklim87/manticoresearch-auto-replication",
   "description": "Package to support automatically replication for ManticoreSearch in Kubernetes cluster",
-  "license": "Apache License 2.0",
+  "license": "Apache-2.0",
   "authors": [
     {
       "name": "Todrik Klim",
