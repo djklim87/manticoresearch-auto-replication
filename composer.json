@@ -1,0 +1,7 @@
+{
+  "name": "djklim87/manticoresearch-auto-replication",
+  "description": "Package to support automatically replication for ManticoreSearch in Kubernetes cluster",
+  "require": {
+    "php": ">=7.4"
+  }
+}
