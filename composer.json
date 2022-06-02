@@ -12,7 +12,9 @@
   ],
   "require": {
     "php": ">=7.4",
-    "guzzlehttp/guzzle": "^7.3"
+    "guzzlehttp/guzzle": "^7.3",
+    "ext-mysqli": "*",
+    "ext-json": "*"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest"

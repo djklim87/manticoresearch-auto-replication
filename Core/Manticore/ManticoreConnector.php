@@ -17,7 +17,6 @@ class ManticoreConnector
 
     public function __construct($host, $port, $label, $maxAttempts)
     {
-
         $this->setMaxAttempts($maxAttempts);
         $this->clusterName = $label.'_cluster';
 
@@ -38,7 +37,7 @@ class ManticoreConnector
 
     public function setMaxAttempts($maxAttempts): void
     {
-        if ($maxAttempts === -1){
+        if ($maxAttempts === -1) {
             $maxAttempts = 999999999;
         }
         $this->maxAttempts = $maxAttempts;
@@ -55,21 +54,25 @@ class ManticoreConnector
         }
     }
 
-    public function isTableExist($tableName): bool
+    public function getTables(): array
     {
-        $tables = $this->query("show tables");
-        if ($tables){
-            $tables = $tables->fetch_all(MYSQLI_ASSOC);
+        $tables     = [];
+        $tablesStmt = $this->query("show tables");
+        if ($tablesStmt) {
+            $tablesStmt = $tablesStmt->fetch_all(MYSQLI_ASSOC);
 
-            foreach ($tables as $row){
-                if ($row['Index'] === $tableName){
-                    return true;
-                }
+            foreach ($tablesStmt as $row) {
+                $tables[] = $row['Index'];
             }
         }
 
-        return false;
+        return $tables;
+    }
 
+    public function isTableExist($tableName): bool
+    {
+        $tables = $this->getTables();
+        return in_array($tableName, $tables);
     }
 
     public function checkClusterName(): bool
@@ -78,8 +81,8 @@ class ManticoreConnector
             $this->getStatus();
         }
 
-        return (isset($this->searchdStatus['cluster_name']) &&
-                $this->searchdStatus['cluster_name'] === $this->clusterName) ?? false;
+        return (isset($this->searchdStatus['cluster_name'])
+                && $this->searchdStatus['cluster_name'] === $this->clusterName) ?? false;
     }
 
     /** @deprecated need to add default indexes for checking it */
@@ -118,7 +121,41 @@ class ManticoreConnector
         return true;
     }
 
-    public function restoreCluster(){
+    public function addNotInClusterTablesIntoCluster(){
+        $notInClusterTables = $this->getNotInClusterTables();
+        if ($notInClusterTables !== []) {
+            foreach ($notInClusterTables as $table) {
+                $this->addTableToCluster($table);
+                echo "==> Table $table was added into cluster\n";
+            }
+        }
+    }
+
+    public function getNotInClusterTables()
+    {
+        $tables = $this->getTables();
+
+        $clusterTables = $this->searchdStatus['cluster_'.$this->clusterName.'_indexes'];
+        if ($clusterTables === '') {
+            return $tables;
+        }
+
+        $clusterTables = explode(',', $clusterTables);
+
+        $notInClusterTables = [];
+        foreach ($clusterTables as $inClusterTable){
+            $inClusterTable = trim($inClusterTable);
+
+            if (!in_array($inClusterTable, $tables)){
+                $notInClusterTables[] = $inClusterTable;
+            }
+        }
+
+        return $notInClusterTables;
+    }
+
+    public function restoreCluster()
+    {
         $this->query("SET CLUSTER GLOBAL 'pc.bootstrap' = 1");
 
         if ($this->getConnectionError()) {
@@ -129,10 +166,9 @@ class ManticoreConnector
     }
 
 
-
     public function joinCluster($hostname): bool
     {
-        if ($this->checkClusterName()){
+        if ($this->checkClusterName()) {
             return true;
         }
         $this->query('JOIN CLUSTER '.$this->clusterName.' at \''.$hostname.':9312\'');
@@ -150,11 +186,11 @@ class ManticoreConnector
             throw new \RuntimeException('Wrong table type '.$type);
         }
 
-        if (!$this->fields){
+        if ( ! $this->fields) {
             throw new \RuntimeException('Fields was not initialized '.$tableName);
         }
 
-        if (!$this->rtInclude){
+        if ( ! $this->rtInclude) {
             throw new \RuntimeException('RT include was not initialized '.$tableName);
         }
 
@@ -182,22 +218,25 @@ class ManticoreConnector
     public function connectAndCreate(): bool
     {
         if ($this->checkClusterName()) {
-
-            if (!$this->checkIsTablesInCluster()){
-                if ($this->isTableExist('pq') && $this->isTableExist('tests') &&
-                    $this->addTableToCluster('pq') && $this->addTableToCluster('tests')){
-                        return true;
+            if ( ! $this->checkIsTablesInCluster()) {
+                if ($this->isTableExist('pq') && $this->isTableExist('tests')
+                    && $this->addTableToCluster('pq')
+                    && $this->addTableToCluster('tests')
+                ) {
+                    return true;
                 }
 
                 if ($this->createTable('pq', self::INDEX_TYPE_PERCOLATE)
                     && $this->addTableToCluster('pq')
                     && $this->createTable('tests', self::INDEX_TYPE_RT)
-                    && $this->addTableToCluster('tests')){
+                    && $this->addTableToCluster('tests')
+                ) {
                     return true;
-                }else{
+                } else {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -246,22 +285,23 @@ class ManticoreConnector
         return "charset_table = 'cjk, non_cjk'";
     }
 
-    protected function query($sql, $logQuery = true, $attempts=0){
+    protected function query($sql, $logQuery = true, $attempts = 0)
+    {
         $result = $this->connection->query($sql);
 
-        if ($logQuery){
+        if ($logQuery) {
             echo "=> Query: ".$sql."\n";
         }
 
         if ($this->getConnectionError()) {
-
             echo "=> Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError()."\n";
-            if ($attempts > $this->maxAttempts){
+            if ($attempts > $this->maxAttempts) {
                 throw new \RuntimeException("Can't process query ".$sql);
             }
 
             sleep(1);
             $attempts++;
+
             return $this->query($sql, $logQuery, $attempts);
         }
 

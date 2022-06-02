@@ -62,38 +62,25 @@ class Resources
         return $hostnames;
     }
 
-//    public function getMinReplica()
-//    {
-//        $this->getPods();
-//
-//
-//        $min   = [];
-//        $count = 0;
-//
-//        foreach ($this->pods['items'] as $pod) {
-//            if (isset($pod['metadata']['labels']['label'])
-//                && $pod['metadata']['labels']['label'] === $this->label
-//            ) {
-//                if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
-//                    if ( ! isset($pod['status']["podIP"])) {
-//                        sleep(2);
-//                        echo "One pod in pending state. Wait until it came alive...\n";
-//
-//                        return $this->getMinReplica();
-//                    }
-//                    $key       = strtotime($pod['status']['startTime']);
-//                    $min[$key] = $pod['status']["podIP"];
-//
-//                    $count++;
-//                } else {
-//                    echo json_encode($pod)."\n\n";
-//                }
-//            }
-//        }
-//        echo "Replica hook: Pods count:".$count."\n";
-//
-//        return [$min, $count];
-//    }
+    public function getMinAvailableReplica()
+    {
+        $podsList = $this->getPodsHostnames();
+        if ($podsList === []) {
+            throw new \RuntimeException("Can't get available nodes list");
+        }
+
+        ksort($podsList);
+
+
+        $min = array_shift($podsList);
+
+        if ($min === gethostname()) {
+            // skip itself
+            $min = array_shift($podsList);
+        }
+
+        return $min;
+    }
 
     public function getMinReplicaName(): string
     {
