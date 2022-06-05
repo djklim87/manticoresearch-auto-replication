@@ -3,6 +3,7 @@
 namespace Core\Mutex;
 
 use Core\Manticore\Manticore;
+use Core\Manticore\ManticoreConnector;
 use mysqli;
 
 class Locker
@@ -40,7 +41,7 @@ class Locker
     {
         if ($this->optimizeLockFile !== null && file_exists($this->optimizeLockFile)) {
             $ip = file_get_contents(OPTIMIZE_FILE);
-            $manticore = new Manticore($ip);
+            $manticore = new ManticoreConnector($ip, WORKER_PORT, WORKER_LABEL, -1);
             $rows = $manticore->showThreads();
 
             if ($rows) {
