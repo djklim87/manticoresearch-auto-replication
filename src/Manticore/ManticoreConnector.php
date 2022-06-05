@@ -288,7 +288,7 @@ class ManticoreConnector
         return "charset_table = 'cjk, non_cjk'";
     }
 
-    protected function query($sql, $logQuery = true, $attempts = 0): \mysqli_result
+    protected function query($sql, $logQuery = true, $attempts = 0)
     {
         $result = $this->connection->query($sql);
 
@@ -311,7 +311,7 @@ class ManticoreConnector
         return $result;
     }
 
-    public function reloadIndexes(): \mysqli_result
+    public function reloadIndexes()
     {
         return $this->query('RELOAD INDEXES');
     }
@@ -328,7 +328,7 @@ class ManticoreConnector
     }
 
 
-    public function optimize($index, $cutoff): \mysqli_result
+    public function optimize($index, $cutoff)
     {
         return $this->query('OPTIMIZE INDEX '.$index.' OPTION cutoff='.$cutoff);
     }
