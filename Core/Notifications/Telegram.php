@@ -15,7 +15,7 @@ class Telegram implements NotificationInterface
 
     public function sendMessage($message): bool
     {
-        echo "=> Notification: ".$message."\n";
+        \Core\Logger\Logger::log("Notification: ".$message);
         $url      = "https://api.telegram.org/bot".$this->token."/sendMessage?chat_id=".$this->chatId;
         $url      .= "&text=".urlencode($message);
         $ch       = curl_init();

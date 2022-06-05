@@ -3,6 +3,7 @@
 namespace Core\Manticore;
 
 use Core\K8s\Resources;
+use Core\Logger\Logger;
 
 class ManticoreJson
 {
@@ -43,7 +44,7 @@ class ManticoreJson
             if (file_exists($this->path)) {
                 try {
                     $manticoreJson = file_get_contents($this->path);
-                    echo "=> Manticore json content: ".$manticoreJson;
+                    Logger::log("Manticore json content: ".$manticoreJson);
                     $this->conf = json_decode($manticoreJson, true);
                 } catch (\Exception $exception) {
                     $this->conf = [];
@@ -107,7 +108,7 @@ class ManticoreJson
             try {
                 $connection = new ManticoreConnector($node, $port, $label, $attempts);
                 if (!$connection->checkClusterName()) {
-                    echo "=> Cluster name mismatch at $node\n";
+                    Logger::log("Cluster name mismatch at $node");
                     continue;
                 }
                 $availableNodes[] = $node.':'.$port;

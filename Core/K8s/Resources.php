@@ -3,6 +3,7 @@
 namespace Core\K8s;
 
 
+use Core\Logger\Logger;
 use Core\Notifications\NotificationInterface;
 
 class Resources
@@ -24,7 +25,7 @@ class Resources
         if ( ! $this->pods) {
             $pods = $this->api->getManticorePods();
             if ( ! isset($pods['items'])) {
-                echo "\n\n=> K8s api don't respond\n";
+                Logger::log('K8s api don\'t respond');
                 exit(1);
             }
 
@@ -36,7 +37,7 @@ class Resources
                         $this->pods[] = $pod;
                     } else {
                         $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
-                        echo "=> Error pod phase ".json_encode($pod)."\n\n";
+                        Logger::log('Error pod phase '.json_encode($pod));
                     }
                 }
             }

@@ -2,7 +2,7 @@
 
 namespace Core\Mutex;
 
-use Core\Manticore\Manticore;
+use Core\Logger\Logger;
 use Core\Manticore\ManticoreConnector;
 use mysqli;
 
@@ -24,7 +24,7 @@ class Locker
     public function checkLock(): bool
     {
         if (!flock($this->fp, LOCK_EX | LOCK_NB)) {
-            Manticore::logger("Another process $this->name is already running");
+            Logger::log("Another process $this->name is already running");
             $this->unlock();
         }
 

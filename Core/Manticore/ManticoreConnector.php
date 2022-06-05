@@ -2,6 +2,7 @@
 
 namespace Core\Manticore;
 
+use Core\Logger\Logger;
 use mysqli;
 
 class ManticoreConnector
@@ -122,7 +123,7 @@ class ManticoreConnector
         if ($notInClusterTables !== []) {
             foreach ($notInClusterTables as $table) {
                 $this->addTableToCluster($table);
-                echo "==> Table $table was added into cluster\n";
+                Logger::log("Table $table was added into cluster");
             }
         }
     }
@@ -228,9 +229,9 @@ class ManticoreConnector
                     && $this->addTableToCluster('tests')
                 ) {
                     return true;
-                } else {
-                    return false;
                 }
+
+                return false;
             }
 
             return true;
@@ -286,11 +287,11 @@ class ManticoreConnector
         $result = $this->connection->query($sql);
 
         if ($logQuery) {
-            echo "=> Query: ".$sql."\n";
+            Logger::log('Query: '.$sql);
         }
 
         if ($this->getConnectionError()) {
-            echo "=> Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError()."\n";
+            Logger::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
             if ($attempts > $this->maxAttempts) {
                 throw new \RuntimeException("Can't process query ".$sql);
             }
@@ -325,6 +326,11 @@ class ManticoreConnector
     public function optimize($index, $cutoff): \mysqli_result
     {
         return $this->query('OPTIMIZE INDEX '.$index.' OPTION cutoff='.$cutoff);
+    }
+
+    public function showThreads()
+    {
+        return $this->fetch('SHOW TREADS option format=all');
     }
 
     private function fetch($query)
