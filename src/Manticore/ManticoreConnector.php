@@ -24,7 +24,7 @@ class ManticoreConnector
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
             $this->connection = new mysqli($host.':'.$port, '', '', '');
 
-            if (!$this->connection->connect_errno) {
+            if ( ! $this->connection->connect_errno) {
                 break;
             }
 
@@ -34,6 +34,11 @@ class ManticoreConnector
         if ($this->connection->connect_errno) {
             throw new \RuntimeException("Can't connect to Manticore at ".$host.':'.$port);
         }
+    }
+
+    public function setCustomClusterName($name)
+    {
+        $this->clusterName = $name;
     }
 
     public function setMaxAttempts($maxAttempts): void
@@ -55,7 +60,7 @@ class ManticoreConnector
 
     public function getTables(): array
     {
-        $tables = [];
+        $tables     = [];
         $tablesStmt = $this->fetch("show tables");
 
         foreach ($tablesStmt as $row) {
@@ -68,6 +73,7 @@ class ManticoreConnector
     public function isTableExist($tableName): bool
     {
         $tables = $this->getTables();
+
         return in_array($tableName, $tables);
     }
 
@@ -143,7 +149,7 @@ class ManticoreConnector
         foreach ($clusterTables as $inClusterTable) {
             $inClusterTable = trim($inClusterTable);
 
-            if (!in_array($inClusterTable, $tables)) {
+            if ( ! in_array($inClusterTable, $tables)) {
                 $notInClusterTables[] = $inClusterTable;
             }
         }
@@ -179,15 +185,15 @@ class ManticoreConnector
 
     public function createTable($tableName, $type): bool
     {
-        if (!in_array($type, ['percolate', 'rt'])) {
+        if ( ! in_array($type, ['percolate', 'rt'])) {
             throw new \RuntimeException('Wrong table type '.$type);
         }
 
-        if (!$this->fields) {
+        if ( ! $this->fields) {
             throw new \RuntimeException('Fields was not initialized '.$tableName);
         }
 
-        if (!$this->rtInclude) {
+        if ( ! $this->rtInclude) {
             throw new \RuntimeException('RT include was not initialized '.$tableName);
         }
 
@@ -215,7 +221,7 @@ class ManticoreConnector
     public function connectAndCreate(): bool
     {
         if ($this->checkClusterName()) {
-            if (!$this->checkIsTablesInCluster()) {
+            if ( ! $this->checkIsTablesInCluster()) {
                 if ($this->isTableExist('pq') && $this->isTableExist('tests')
                     && $this->addTableToCluster('pq')
                     && $this->addTableToCluster('tests')
@@ -252,11 +258,11 @@ class ManticoreConnector
     public function setFields($rules)
     {
         $this->rtInclude = $this->getRtInclude();
-        $fields = ['`invalidjson` text indexed'];
-        $envFields = explode("|", $rules);
+        $fields          = ['`invalidjson` text indexed'];
+        $envFields       = explode("|", $rules);
         foreach ($envFields as $field) {
             $field = explode("=", $field);
-            if (!empty($field[0]) && !empty($field[1])) {
+            if ( ! empty($field[0]) && ! empty($field[1])) {
                 if ($field[0] === "text") {
                     $fields[] = "`".$field[1]."` ".$field[0]." indexed";
                 } elseif ($field[0] === 'url') {
@@ -314,7 +320,6 @@ class ManticoreConnector
     {
         $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS');
         foreach ($indexStatus as $row) {
-
             if ($row["Variable_name"] === 'disk_chunks') {
                 return (int) $row["Value"];
             }
@@ -337,7 +342,7 @@ class ManticoreConnector
     {
         $result = $this->query($query);
 
-        if (!empty($result)) {
+        if ( ! empty($result)) {
             /** @var \mysqli_result $result */
             $result = $result->fetch_all(MYSQLI_ASSOC);
             if ($result !== null) {
