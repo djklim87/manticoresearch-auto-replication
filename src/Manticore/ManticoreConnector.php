@@ -120,6 +120,9 @@ class ManticoreConnector
             return false;
         }
 
+        $this->searchdStatus = [];
+        $this->getStatus();
+
         return true;
     }
 
@@ -165,6 +168,9 @@ class ManticoreConnector
             return false;
         }
 
+        $this->searchdStatus = [];
+        $this->getStatus();
+
         return true;
     }
 
@@ -179,6 +185,9 @@ class ManticoreConnector
         if ($this->getConnectionError()) {
             return false;
         }
+
+        $this->searchdStatus = [];
+        $this->getStatus();
 
         return true;
     }
@@ -214,6 +223,9 @@ class ManticoreConnector
         if ($this->getConnectionError()) {
             return false;
         }
+
+        $this->searchdStatus = [];
+        $this->getStatus();
 
         return true;
     }
