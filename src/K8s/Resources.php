@@ -67,7 +67,7 @@ class Resources
             throw new \RuntimeException("Kubernetes API don't return suitable pod to join");
         }
 
-        return $pods[min($pods)];
+        return $pods[min(array_keys($pods))];
 
     }
 
