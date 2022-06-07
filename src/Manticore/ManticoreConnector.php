@@ -58,10 +58,10 @@ class ManticoreConnector
         }
     }
 
-    public function getTables(): array
+    public function getTables($log = true): array
     {
         $tables     = [];
-        $tablesStmt = $this->fetch("show tables");
+        $tablesStmt = $this->fetch("show tables", $log);
 
         foreach ($tablesStmt as $row) {
             $tables[] = $row['Index'];
@@ -350,9 +350,9 @@ class ManticoreConnector
         return $this->fetch('SHOW THREADS option format=all');
     }
 
-    private function fetch($query)
+    private function fetch($query, $log = true)
     {
-        $result = $this->query($query);
+        $result = $this->query($query, $log);
 
         if ( ! empty($result)) {
             /** @var \mysqli_result $result */
