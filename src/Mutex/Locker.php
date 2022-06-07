@@ -51,7 +51,7 @@ class Locker
 
             if ($rows) {
                 foreach ($rows as $row) {
-                    if (strpos($row, 'SYSTEM OPTIMIZE') !== false) {
+                    if (strpos($row['Info'], 'SYSTEM OPTIMIZE') !== false) {
                         return true;
                     }
                 }
