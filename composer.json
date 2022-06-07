@@ -14,9 +14,15 @@
     "php": ">=7.4",
     "guzzlehttp/guzzle": "^7.3",
     "ext-mysqli": "*",
-    "ext-json": "*"
+    "ext-json": "*",
+    "ext-curl": "*"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest"
+  },
+  "autoload": {
+    "psr-4": {
+      "Core\\": "./src/"
+    }
   }
 }

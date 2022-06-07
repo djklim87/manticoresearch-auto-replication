@@ -3,6 +3,7 @@
 namespace Core\K8s;
 
 
+use Core\Logger\Logger;
 use Core\Notifications\NotificationInterface;
 
 class Resources
@@ -19,12 +20,12 @@ class Resources
         $this->notification = $notification;
     }
 
-    public function getPods()
+    public function getPods(): array
     {
         if ( ! $this->pods) {
             $pods = $this->api->getManticorePods();
             if ( ! isset($pods['items'])) {
-                echo "\n\n=> K8s api don't respond\n";
+                Logger::log('K8s api don\'t respond');
                 exit(1);
             }
 
@@ -36,13 +37,38 @@ class Resources
                         $this->pods[] = $pod;
                     } else {
                         $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
-                        echo "=> Error pod phase ".json_encode($pod)."\n\n";
+                        Logger::log('Error pod phase '.json_encode($pod));
                     }
                 }
             }
         }
 
         return $this->pods;
+    }
+
+    public function getActivePodsCount(): int
+    {
+        return count($this->getPods());
+    }
+
+    public function getOldestActivePodName()
+    {
+        $currentPodHostname = gethostname();
+
+        $pods = [];
+        foreach ($this->getPods() as $pod) {
+            if ($pod['metadata']['name'] === $currentPodHostname){
+                continue;
+            }
+            $pods[$pod['status']['startTime']] = $pod['metadata']['name'];
+        }
+
+        if ($pods === []){
+            throw new \RuntimeException("Kubernetes API don't return suitable pod to join");
+        }
+
+        return $pods[min(array_keys($pods))];
+
     }
 
     public function getPodsHostnames(): array
@@ -61,6 +87,24 @@ class Resources
 
         return $hostnames;
     }
+
+    public function getPodsIPs(): array
+    {
+        if (defined('DEV') && DEV === true) {
+            return [];
+        }
+        $ips = [];
+        $this->getPods();
+
+        foreach ($this->pods as $pod) {
+            if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
+                $ips[] = $pod['status']['podIP'];
+            }
+        }
+
+        return $ips;
+    }
+
 
     public function getMinAvailableReplica()
     {

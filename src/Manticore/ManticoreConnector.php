@@ -2,6 +2,7 @@
 
 namespace Core\Manticore;
 
+use Core\Logger\Logger;
 use mysqli;
 
 class ManticoreConnector
@@ -35,6 +36,11 @@ class ManticoreConnector
         }
     }
 
+    public function setCustomClusterName($name)
+    {
+        $this->clusterName = $name;
+    }
+
     public function setMaxAttempts($maxAttempts): void
     {
         if ($maxAttempts === -1) {
@@ -45,25 +51,20 @@ class ManticoreConnector
 
     public function getStatus(): void
     {
-        $clusterStatus = $this->query("show status");
-        if ($clusterStatus !== null) {
-            $clusterStatus = (array) $clusterStatus->fetch_all(MYSQLI_ASSOC);
-            foreach ($clusterStatus as $row) {
-                $this->searchdStatus[$row['Counter']] = $row['Value'];
-            }
+        $clusterStatus = $this->fetch("show status");
+
+        foreach ($clusterStatus as $row) {
+            $this->searchdStatus[$row['Counter']] = $row['Value'];
         }
     }
 
     public function getTables(): array
     {
         $tables     = [];
-        $tablesStmt = $this->query("show tables");
-        if ($tablesStmt) {
-            $tablesStmt = $tablesStmt->fetch_all(MYSQLI_ASSOC);
+        $tablesStmt = $this->fetch("show tables");
 
-            foreach ($tablesStmt as $row) {
-                $tables[] = $row['Index'];
-            }
+        foreach ($tablesStmt as $row) {
+            $tables[] = $row['Index'];
         }
 
         return $tables;
@@ -72,6 +73,7 @@ class ManticoreConnector
     public function isTableExist($tableName): bool
     {
         $tables = $this->getTables();
+
         return in_array($tableName, $tables);
     }
 
@@ -118,15 +120,19 @@ class ManticoreConnector
             return false;
         }
 
+        $this->searchdStatus = [];
+        $this->getStatus();
+
         return true;
     }
 
-    public function addNotInClusterTablesIntoCluster(){
+    public function addNotInClusterTablesIntoCluster()
+    {
         $notInClusterTables = $this->getNotInClusterTables();
         if ($notInClusterTables !== []) {
             foreach ($notInClusterTables as $table) {
                 $this->addTableToCluster($table);
-                echo "==> Table $table was added into cluster\n";
+                Logger::log("Table $table was added into cluster");
             }
         }
     }
@@ -143,10 +149,10 @@ class ManticoreConnector
         $clusterTables = explode(',', $clusterTables);
 
         $notInClusterTables = [];
-        foreach ($clusterTables as $inClusterTable){
+        foreach ($clusterTables as $inClusterTable) {
             $inClusterTable = trim($inClusterTable);
 
-            if (!in_array($inClusterTable, $tables)){
+            if ( ! in_array($inClusterTable, $tables)) {
                 $notInClusterTables[] = $inClusterTable;
             }
         }
@@ -162,6 +168,9 @@ class ManticoreConnector
             return false;
         }
 
+        $this->searchdStatus = [];
+        $this->getStatus();
+
         return true;
     }
 
@@ -176,6 +185,9 @@ class ManticoreConnector
         if ($this->getConnectionError()) {
             return false;
         }
+
+        $this->searchdStatus = [];
+        $this->getStatus();
 
         return true;
     }
@@ -212,6 +224,9 @@ class ManticoreConnector
             return false;
         }
 
+        $this->searchdStatus = [];
+        $this->getStatus();
+
         return true;
     }
 
@@ -232,9 +247,9 @@ class ManticoreConnector
                     && $this->addTableToCluster('tests')
                 ) {
                     return true;
-                } else {
-                    return false;
                 }
+
+                return false;
             }
 
             return true;
@@ -290,11 +305,11 @@ class ManticoreConnector
         $result = $this->connection->query($sql);
 
         if ($logQuery) {
-            echo "=> Query: ".$sql."\n";
+            Logger::log('Query: '.$sql);
         }
 
         if ($this->getConnectionError()) {
-            echo "=> Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError()."\n";
+            Logger::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
             if ($attempts > $this->maxAttempts) {
                 throw new \RuntimeException("Can't process query ".$sql);
             }
@@ -306,6 +321,48 @@ class ManticoreConnector
         }
 
         return $result;
+    }
+
+    public function reloadIndexes()
+    {
+        return $this->query('RELOAD INDEXES');
+    }
+
+    public function getChunksCount($index): int
+    {
+        $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS');
+        foreach ($indexStatus as $row) {
+            if ($row["Variable_name"] === 'disk_chunks') {
+                return (int) $row["Value"];
+            }
+        }
+        throw new \RuntimeException("Can't get chunks count");
+    }
+
+
+    public function optimize($index, $cutoff)
+    {
+        return $this->query('OPTIMIZE INDEX '.$index.' OPTION cutoff='.$cutoff);
+    }
+
+    public function showThreads()
+    {
+        return $this->fetch('SHOW THREADS option format=all');
+    }
+
+    private function fetch($query)
+    {
+        $result = $this->query($query);
+
+        if ( ! empty($result)) {
+            /** @var \mysqli_result $result */
+            $result = $result->fetch_all(MYSQLI_ASSOC);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        return false;
     }
 
     public function getConnectionError(): string

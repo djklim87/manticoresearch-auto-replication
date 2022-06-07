@@ -2,6 +2,7 @@
 
 namespace Core\K8s;
 
+use Core\Logger\Logger;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\RequestException;
@@ -121,9 +122,10 @@ class ApiClient
         try {
             return $this->httpClient->request($method, $url, $params);
         } catch (RequestException $e) {
-            echo Psr7\Message::toString($e->getRequest())."\n";
+            Logger::log(Psr7\Message::toString($e->getRequest()));
+
             if ($e->hasResponse()) {
-                echo Psr7\Message::toString($e->getResponse());
+                Logger::log(Psr7\Message::toString($e->getResponse()));
             }
 
             exit(1);
