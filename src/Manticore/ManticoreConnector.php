@@ -347,7 +347,7 @@ class ManticoreConnector
 
     public function showThreads()
     {
-        return $this->fetch('SHOW TREADS option format=all');
+        return $this->fetch('SHOW THREADS option format=all');
     }
 
     private function fetch($query)
