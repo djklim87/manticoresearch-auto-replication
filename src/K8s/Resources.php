@@ -23,22 +23,18 @@ class Resources
     public function getPods(): array
     {
         if ( ! $this->pods) {
-            $pods = $this->api->getManticorePods();
+            $pods = $this->api->getManticorePods($this->label);
             if ( ! isset($pods['items'])) {
                 Logger::log('K8s api don\'t respond');
                 exit(1);
             }
 
             foreach ($pods['items'] as $pod) {
-                if (isset($pod['metadata']['labels']['label'])
-                    && $pod['metadata']['labels']['label'] === $this->label
-                ) {
-                    if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
-                        $this->pods[] = $pod;
-                    } else {
-                        $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
-                        Logger::log('Error pod phase '.json_encode($pod));
-                    }
+                if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
+                    $this->pods[] = $pod;
+                } else {
+                    $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
+                    Logger::log('Error pod phase '.json_encode($pod));
                 }
             }
         }
@@ -57,18 +53,17 @@ class Resources
 
         $pods = [];
         foreach ($this->getPods() as $pod) {
-            if ($pod['metadata']['name'] === $currentPodHostname){
+            if ($pod['metadata']['name'] === $currentPodHostname) {
                 continue;
             }
             $pods[$pod['status']['startTime']] = $pod['metadata']['name'];
         }
 
-        if ($pods === []){
+        if ($pods === []) {
             throw new \RuntimeException("Kubernetes API don't return suitable pod to join");
         }
 
         return $pods[min(array_keys($pods))];
-
     }
 
     public function getPodsHostnames(): array
