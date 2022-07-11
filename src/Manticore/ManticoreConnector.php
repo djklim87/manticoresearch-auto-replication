@@ -49,19 +49,19 @@ class ManticoreConnector
         $this->maxAttempts = $maxAttempts;
     }
 
-    public function getStatus(): void
+    public function getStatus($log = true): void
     {
-        $clusterStatus = $this->fetch("show status");
+        $clusterStatus = $this->fetch("show status", $log);
 
         foreach ($clusterStatus as $row) {
             $this->searchdStatus[$row['Counter']] = $row['Value'];
         }
     }
 
-    public function getTables(): array
+    public function getTables($log = true): array
     {
         $tables     = [];
-        $tablesStmt = $this->fetch("show tables");
+        $tablesStmt = $this->fetch("show tables", $log);
 
         foreach ($tablesStmt as $row) {
             $tables[] = $row['Index'];
@@ -112,9 +112,9 @@ class ManticoreConnector
         return ($this->searchdStatus['cluster_'.$this->searchdStatus['cluster_name'].'_status'] === 'primary') ?? false;
     }
 
-    public function createCluster(): bool
+    public function createCluster($log = true): bool
     {
-        $this->query('CREATE CLUSTER '.$this->clusterName);
+        $this->query('CREATE CLUSTER '.$this->clusterName, $log);
 
         if ($this->getConnectionError()) {
             return false;
@@ -160,9 +160,9 @@ class ManticoreConnector
         return $notInClusterTables;
     }
 
-    public function restoreCluster()
+    public function restoreCluster($log = true): bool
     {
-        $this->query("SET CLUSTER GLOBAL 'pc.bootstrap' = 1");
+        $this->query("SET CLUSTER GLOBAL 'pc.bootstrap' = 1", $log);
 
         if ($this->getConnectionError()) {
             return false;
@@ -175,12 +175,12 @@ class ManticoreConnector
     }
 
 
-    public function joinCluster($hostname): bool
+    public function joinCluster($hostname, $log = true): bool
     {
         if ($this->checkClusterName()) {
             return true;
         }
-        $this->query('JOIN CLUSTER '.$this->clusterName.' at \''.$hostname.':9312\'');
+        $this->query('JOIN CLUSTER '.$this->clusterName.' at \''.$hostname.':9312\'', $log);
 
         if ($this->getConnectionError()) {
             return false;
@@ -216,9 +216,9 @@ class ManticoreConnector
         return true;
     }
 
-    public function addTableToCluster($tableName): bool
+    public function addTableToCluster($tableName, $log = true): bool
     {
-        $this->query("ALTER CLUSTER ".$this->clusterName." ADD ".$tableName);
+        $this->query("ALTER CLUSTER ".$this->clusterName." ADD ".$tableName, $log);
 
         if ($this->getConnectionError()) {
             return false;
@@ -328,9 +328,9 @@ class ManticoreConnector
         return $this->query('RELOAD INDEXES');
     }
 
-    public function getChunksCount($index): int
+    public function getChunksCount($index, $log = true): int
     {
-        $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS');
+        $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS', $log);
         foreach ($indexStatus as $row) {
             if ($row["Variable_name"] === 'disk_chunks') {
                 return (int) $row["Value"];
@@ -345,14 +345,14 @@ class ManticoreConnector
         return $this->query('OPTIMIZE INDEX '.$index.' OPTION cutoff='.$cutoff);
     }
 
-    public function showThreads()
+    public function showThreads($log = true)
     {
-        return $this->fetch('SHOW TREADS option format=all');
+        return $this->fetch('SHOW THREADS option format=all', $log);
     }
 
-    private function fetch($query)
+    private function fetch($query, $log = true)
     {
-        $result = $this->query($query);
+        $result = $this->query($query, $log);
 
         if ( ! empty($result)) {
             /** @var \mysqli_result $result */
