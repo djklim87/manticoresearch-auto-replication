@@ -73,6 +73,7 @@ class ManticoreJson
 
     public function updateNodesList(array $nodesList): void
     {
+        echo "=> Update nodes list ".json_encode($nodesList)."\n";
         if ($nodesList !== []){
             $newNodes = implode(',', $nodesList);
 
@@ -113,6 +114,7 @@ class ManticoreJson
                 }
                 $availableNodes[] = $node.':'.$port;
             } catch (\RuntimeException $exception) {
+                echo "=> Node at $node no more available\n".$exception->getMessage();
             }
         }
 
@@ -124,6 +126,7 @@ class ManticoreJson
      */
     private function save(): void
     {
+        echo "=> Save manticore.json ".json_encode($this->conf)."\n";
         file_put_contents($this->path, json_encode($this->conf, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     }
 }
