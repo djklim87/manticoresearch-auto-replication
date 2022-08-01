@@ -83,7 +83,7 @@ class Resources
         return $hostnames;
     }
 
-    public function getPodsIPs(): array
+    public function getPodsIp(): array
     {
         if (defined('DEV') && DEV === true) {
             return [];
@@ -91,9 +91,19 @@ class Resources
         $ips = [];
         $this->getPods();
 
+        $hostname = gethostname();
+
         foreach ($this->pods as $pod) {
             if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
-                $ips[] = $pod['status']['podIP'];
+                if (isset($pod['status']['podIP'])) {
+                    $ips[$pod['metadata']['name']] = $pod['status']['podIP'];
+                } elseif ($pod['metadata']['name'] === $hostname) {
+                    $selfIp = getHostByName($hostname);
+                    if ( ! empty($selfIp)) {
+                        $ips[$hostname] = $selfIp;
+                    }
+                }
+
             }
         }
 

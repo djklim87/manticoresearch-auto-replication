@@ -97,28 +97,38 @@ class ManticoreJson
 
     public function checkNodesAvailability(Resources $resources, $port, $label, $attempts): void
     {
-        $nodes = $resources->getPodsHostnames();
-
+        $nodes = $resources->getPodsIp();
         $availableNodes = [];
-        foreach ($nodes as $node) {
+
+        $skipSelf = true;
+        if (count($nodes) > 1) {
+            $skipSelf = false;
+        }
+        foreach ($nodes as $hostname => $ip) {
             // Skip current node
-            if ($node === gethostname()) {
+
+            if ($hostname === gethostname()) {
+                if (!$skipSelf) {
+                    $availableNodes[] = $ip.':9312';
+                }
                 continue;
             }
 
+
             try {
-                $connection = new ManticoreConnector($node, $port, $label, $attempts);
-                if (!$connection->checkClusterName()) {
-                    Logger::log("Cluster name mismatch at $node");
+                $connection = new ManticoreConnector($ip, $port, $label, $attempts);
+                if ( ! $connection->checkClusterName()) {
+                    echo "=> Cluster name mismatch at $ip\n";
                     continue;
                 }
-                $availableNodes[] = $node.':'.$port;
+                $availableNodes[] = $ip.':9312';
             } catch (\RuntimeException $exception) {
-                echo "=> Node at $node no more available\n".$exception->getMessage();
+                echo "=> Node at $ip no more available\n".$exception->getMessage()."\n";
             }
         }
 
         $this->updateNodesList($availableNodes);
+
     }
 
     /**
