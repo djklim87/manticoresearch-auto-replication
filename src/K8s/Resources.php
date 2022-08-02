@@ -2,28 +2,38 @@
 
 namespace Core\K8s;
 
-
 use Core\Logger\Logger;
 use Core\Notifications\NotificationInterface;
 
 class Resources
 {
-    private $label;
+    private array $labels;
     private $api;
     private $notification;
     private $pods;
 
-    public function __construct(ApiClient $api, $label, NotificationInterface $notification)
+    public function __construct(ApiClient $api, array $labels, NotificationInterface $notification)
     {
-        $this->label        = $label;
+        $this->setLabels($labels);
         $this->api          = $api;
         $this->notification = $notification;
     }
 
+    private function setLabels(array $labels)
+    {
+        $this->labels = $labels;
+    }
+
+    private function getLabels(): array
+    {
+        return $this->labels;
+    }
+
+
     public function getPods(): array
     {
         if ( ! $this->pods) {
-            $pods = $this->api->getManticorePods($this->label);
+            $pods = $this->api->getManticorePods($this->getLabels());
             if ( ! isset($pods['items'])) {
                 Logger::log('K8s api don\'t respond');
                 exit(1);
@@ -65,6 +75,31 @@ class Resources
 
         return $pods[min(array_keys($pods))];
     }
+    
+    public function getPodsIp(): array
+    {
+        if (defined('DEV') && DEV === true) {
+            return [];
+        }
+        $ips = [];
+        $this->getPods();
+
+        $hostname = gethostname();
+        foreach ($this->pods as $pod) {
+            if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
+                if (isset($pod['status']['podIP'])) {
+                    $ips[$pod['metadata']['name']] = $pod['status']['podIP'];
+                } elseif ($pod['metadata']['name'] === $hostname) {
+                    $selfIp = getHostByName($hostname);
+                    if ( ! empty($selfIp)) {
+                        $ips[$hostname] = $selfIp;
+                    }
+                }
+            }
+        }
+
+        return $ips;
+    }
 
     public function getPodsHostnames(): array
     {
@@ -82,35 +117,8 @@ class Resources
 
         return $hostnames;
     }
-
-    public function getPodsIp(): array
-    {
-        if (defined('DEV') && DEV === true) {
-            return [];
-        }
-        $ips = [];
-        $this->getPods();
-
-        $hostname = gethostname();
-
-        foreach ($this->pods as $pod) {
-            if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
-                if (isset($pod['status']['podIP'])) {
-                    $ips[$pod['metadata']['name']] = $pod['status']['podIP'];
-                } elseif ($pod['metadata']['name'] === $hostname) {
-                    $selfIp = getHostByName($hostname);
-                    if ( ! empty($selfIp)) {
-                        $ips[$hostname] = $selfIp;
-                    }
-                }
-
-            }
-        }
-
-        return $ips;
-    }
-
-
+    
+    
     public function getMinAvailableReplica()
     {
         $podsList = $this->getPodsHostnames();
@@ -149,6 +157,6 @@ class Resources
         $hostname = gethostname();
         $parts    = explode("-", $hostname);
 
-        return (int) array_pop($parts);
+        return (int)array_pop($parts);
     }
 }

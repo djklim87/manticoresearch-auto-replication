@@ -50,9 +50,10 @@ class ApiClient
     /**
      * @throws JsonException
      */
-    public function getManticorePods($label = null)
+    public function getManticorePods(array $labels = null)
     {
-        return json_decode($this->request(self::TYPE_PODS, 'GET', false, $label)->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
+        return json_decode($this->request(self::TYPE_PODS, 'GET', false, $labels)->getBody()->getContents(), true, 512,
+            JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -63,7 +64,7 @@ class ApiClient
         return json_decode($this->request(self::TYPE_NODES, 'GET', true)->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
     }
 
-    private function request($section, $type = "GET", $noNamespace = false, $label = null)
+    private function request($section, $type = "GET", $noNamespace = false, array $labels = null)
     {
         $params = [
             'verify'  => $this->cert,
@@ -76,9 +77,15 @@ class ApiClient
         ];
 
         $url = $this->getUrl($section, $noNamespace);
-        if ($label){
-            $url .= '?labelSelector=label='.$label;
+        if ($labels) {
+            $labelsCond = [];
+            foreach ($labels as $labelName => $labelValue) {
+                $labelsCond[] = $labelName."=".$labelValue;
+            }
+
+            $url .= '?labelSelector='.implode(",", $labelsCond);
         }
+
         return $this->call($type, $url, $params);
     }
 
