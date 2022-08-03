@@ -10,7 +10,7 @@ class ManticoreConnector
 
     protected int $maxAttempts;
     protected mysqli $connection;
-    protected string $clusterName;
+    protected string $clusterName = "";
     protected string $rtInclude;
     protected $fields;
     protected array $searchdStatus = [];
@@ -18,7 +18,13 @@ class ManticoreConnector
     public function __construct($host, $port, $clusterName, $maxAttempts)
     {
         $this->setMaxAttempts($maxAttempts);
-        $this->clusterName = $clusterName.'_cluster';
+
+        if (is_array($clusterName)){
+            throw new \RuntimeException("Cluster as array");
+        }
+        if (isset($clusterName)){
+            $this->clusterName = $clusterName.'_cluster';
+        }
 
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
             $this->connection = new mysqli($host.':'.$port, '', '', '');
