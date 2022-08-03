@@ -2,8 +2,8 @@
 
 namespace Core\Manticore;
 
+use Analog\Analog;
 use Core\K8s\Resources;
-use Core\Logger\Logger;
 
 class ManticoreJson
 {
@@ -44,7 +44,7 @@ class ManticoreJson
             if (file_exists($this->path)) {
                 try {
                     $manticoreJson = file_get_contents($this->path);
-                    Logger::log("Manticore json content: ".$manticoreJson);
+                    Analog::log("Manticore json content: ".$manticoreJson);
                     $this->conf = json_decode($manticoreJson, true);
                 } catch (\Exception $exception) {
                     $this->conf = [];
@@ -73,7 +73,7 @@ class ManticoreJson
 
     public function updateNodesList(array $nodesList): void
     {
-        echo "=> Update nodes list ".json_encode($nodesList)."\n";
+        Analog::log("Update nodes list ".json_encode($nodesList));
         if ($nodesList !== []){
             $newNodes = implode(',', $nodesList);
 
@@ -118,12 +118,12 @@ class ManticoreJson
             try {
                 $connection = new ManticoreConnector($ip, $port, $label, $attempts);
                 if ( ! $connection->checkClusterName()) {
-                    echo "=> Cluster name mismatch at $ip\n";
+                    Analog::log("Cluster name mismatch at $ip");
                     continue;
                 }
                 $availableNodes[] = $ip.':9312';
             } catch (\RuntimeException $exception) {
-                echo "=> Node at $ip no more available\n".$exception->getMessage()."\n";
+                Analog::log("Node at $ip no more available\n".$exception->getMessage());
             }
         }
 
@@ -136,7 +136,7 @@ class ManticoreJson
      */
     private function save(): void
     {
-        echo "=> Save manticore.json ".json_encode($this->conf)."\n";
+        Analog::log("Save manticore.json ".json_encode($this->conf));
         file_put_contents($this->path, json_encode($this->conf, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT));
     }
 }

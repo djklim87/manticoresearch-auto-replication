@@ -2,15 +2,15 @@
 
 namespace Core\K8s;
 
-use Core\Logger\Logger;
+use Analog\Analog;
 use Core\Notifications\NotificationInterface;
 
 class Resources
 {
     private array $labels;
-    private $api;
-    private $notification;
-    private $pods;
+    private ApiClient $api;
+    private NotificationInterface $notification;
+    private array $pods = [];
 
     public function __construct(ApiClient $api, array $labels, NotificationInterface $notification)
     {
@@ -19,7 +19,7 @@ class Resources
         $this->notification = $notification;
     }
 
-    private function setLabels(array $labels)
+    private function setLabels(array $labels): void
     {
         $this->labels = $labels;
     }
@@ -30,12 +30,15 @@ class Resources
     }
 
 
+    /**
+     * @throws \JsonException
+     */
     public function getPods(): array
     {
         if ( ! $this->pods) {
             $pods = $this->api->getManticorePods($this->getLabels());
             if ( ! isset($pods['items'])) {
-                Logger::log('K8s api don\'t respond');
+                Analog::log('K8s api don\'t respond');
                 exit(1);
             }
 
@@ -44,7 +47,7 @@ class Resources
                     $this->pods[] = $pod;
                 } else {
                     $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
-                    Logger::log('Error pod phase '.json_encode($pod));
+                    Analog::log('Error pod phase '.json_encode($pod));
                 }
             }
         }
@@ -52,11 +55,17 @@ class Resources
         return $this->pods;
     }
 
+    /**
+     * @throws \JsonException
+     */
     public function getActivePodsCount(): int
     {
         return count($this->getPods());
     }
 
+    /**
+     * @throws \JsonException
+     */
     public function getOldestActivePodName()
     {
         $currentPodHostname = gethostname();
@@ -75,7 +84,7 @@ class Resources
 
         return $pods[min(array_keys($pods))];
     }
-    
+
     public function getPodsIp(): array
     {
         if (defined('DEV') && DEV === true) {
@@ -117,8 +126,8 @@ class Resources
 
         return $hostnames;
     }
-    
-    
+
+
     public function getMinAvailableReplica()
     {
         $podsList = $this->getPodsHostnames();

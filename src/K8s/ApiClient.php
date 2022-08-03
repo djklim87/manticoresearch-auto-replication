@@ -2,8 +2,9 @@
 
 namespace Core\K8s;
 
-use Core\Logger\Logger;
+use Analog;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Exception\RequestException;
 use JsonException;
@@ -17,19 +18,22 @@ class ApiClient
     public const TYPE_SERVICE = 'services';
     public const TYPE_PODS = 'pods';
     public const TYPE_NODES = 'nodes';
+    public const TYPE_CONFIGMAPS = 'configmaps';
+    public const TYPE_SECRETS = 'secrets';
+    public const TYPE_PVC = 'persistentvolumeclaims';
 
 
     private string $apiUrl = 'https://kubernetes.default.svc';
     private string $cert = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt';
     private array $apiSections
         = [
-            self::TYPE_SERVICE       => 'api/v1',
-            self::TYPE_STATEFULSET   => 'apis/apps/v1',
-            'configmaps'             => 'api/v1',
-            'persistentvolumeclaims' => 'api/v1',
-            'secrets'                => 'api/v1',
-            self::TYPE_PODS          => 'api/v1',
-            self::TYPE_NODES         => 'api/v1',
+            self::TYPE_SERVICE     => 'api/v1',
+            self::TYPE_STATEFULSET => 'apis/apps/v1',
+            self::TYPE_CONFIGMAPS  => 'api/v1',
+            self::TYPE_PVC         => 'api/v1',
+            self::TYPE_SECRETS     => 'api/v1',
+            self::TYPE_PODS        => 'api/v1',
+            self::TYPE_NODES       => 'api/v1',
         ];
 
     private string $bearer;
@@ -52,8 +56,12 @@ class ApiClient
      */
     public function getManticorePods(array $labels = null)
     {
-        return json_decode($this->request(self::TYPE_PODS, 'GET', false, $labels)->getBody()->getContents(), true, 512,
-            JSON_THROW_ON_ERROR);
+        return json_decode(
+            $this->request(self::TYPE_PODS, 'GET', false, $labels)->getBody()->getContents(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
     }
 
     /**
@@ -93,12 +101,18 @@ class ApiClient
     private function getUrl($section, $noNamespace = false)
     {
         if ($noNamespace) {
-            return str_replace(['{{API-URL}}', '{{API-VERSION}}', '{{API-SECTION}}'],
-                [$this->apiUrl, $this->apiSections[$section], $section], self::API_URL_SCHEME_NO_NS);
+            return str_replace(
+                ['{{API-URL}}', '{{API-VERSION}}', '{{API-SECTION}}'],
+                [$this->apiUrl, $this->apiSections[$section], $section],
+                self::API_URL_SCHEME_NO_NS
+            );
         }
 
-        return str_replace(['{{API-URL}}', '{{API-VERSION}}', '{{NAMESPACE}}', '{{API-SECTION}}'],
-            [$this->apiUrl, $this->apiSections[$section], $this->namespace, $section], self::API_URL_SCHEME);
+        return str_replace(
+            ['{{API-URL}}', '{{API-VERSION}}', '{{NAMESPACE}}', '{{API-SECTION}}'],
+            [$this->apiUrl, $this->apiSections[$section], $this->namespace, $section],
+            self::API_URL_SCHEME
+        );
     }
 
 
@@ -133,12 +147,15 @@ class ApiClient
         try {
             return $this->httpClient->request($method, $url, $params);
         } catch (RequestException $e) {
-            Logger::log(Psr7\Message::toString($e->getRequest()));
+            Analog::log(Psr7\Message::toString($e->getRequest()));
 
             if ($e->hasResponse()) {
-                Logger::log(Psr7\Message::toString($e->getResponse()));
+                Analog::log(Psr7\Message::toString($e->getResponse()));
             }
 
+            exit(1);
+        } catch (GuzzleException $e) {
+            Analog::log($e->getMessage());
             exit(1);
         }
     }

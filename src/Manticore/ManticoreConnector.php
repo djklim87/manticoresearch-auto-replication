@@ -2,7 +2,7 @@
 
 namespace Core\Manticore;
 
-use Core\Logger\Logger;
+use Analog\Analog;
 use mysqli;
 
 class ManticoreConnector
@@ -16,10 +16,10 @@ class ManticoreConnector
     protected $fields;
     protected array $searchdStatus = [];
 
-    public function __construct($host, $port, $label, $maxAttempts)
+    public function __construct($host, $port, $clusterName, $maxAttempts)
     {
         $this->setMaxAttempts($maxAttempts);
-        $this->clusterName = $label.'_cluster';
+        $this->clusterName = $clusterName.'_cluster';
 
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
             $this->connection = new mysqli($host.':'.$port, '', '', '');
@@ -132,7 +132,7 @@ class ManticoreConnector
         if ($notInClusterTables !== []) {
             foreach ($notInClusterTables as $table) {
                 $this->addTableToCluster($table);
-                Logger::log("Table $table was added into cluster");
+                Analog::log("Table $table was added into cluster");
             }
         }
     }
@@ -305,11 +305,11 @@ class ManticoreConnector
         $result = $this->connection->query($sql);
 
         if ($logQuery) {
-            Logger::log('Query: '.$sql);
+            Analog::log('Query: '.$sql);
         }
 
         if ($this->getConnectionError()) {
-            Logger::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
+            Analog::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
             if ($attempts > $this->maxAttempts) {
                 throw new \RuntimeException("Can't process query ".$sql);
             }
