@@ -23,6 +23,8 @@ class ManticoreConnector
             $this->clusterName = $clusterName.'_cluster';
         }
 
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
             try {
                 $this->connection = new mysqli($host.':'.$port, '', '', '');
