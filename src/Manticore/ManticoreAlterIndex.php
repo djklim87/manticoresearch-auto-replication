@@ -5,7 +5,7 @@ namespace Core\Manticore;
 use Analog\Analog;
 use RuntimeException;
 
-class ManticoreAlterIndex extends ManticoreConnector
+class ManticoreAlterIndex extends ManticoreStreamsConnector
 {
 
     /**

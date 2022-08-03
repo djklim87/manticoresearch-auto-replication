@@ -33,7 +33,7 @@ class ManticoreConnector
                     break;
                 }
             } catch (\Exception $exception) {
-                Analog::error("Manticore connect exception ($host.':'.$port) ".$exception->getMessage());
+                Analog::error("Manticore connect exception ($host:$port) ".$exception->getMessage());
             }
 
 
