@@ -36,15 +36,12 @@ class Locker
         exit($exitStatus);
     }
 
-    public function checkOptimizeLock($file): bool
+    public function checkOptimizeLock($file, $workerPort = 9306): bool
     {
         if ($this->optimizeLockFile !== null && file_exists($this->optimizeLockFile)) {
             $ip = file_get_contents($file);
 
-            if (!defined('WORKER_PORT')){
-                throw new \RuntimeException("WORKER_PORT is not defined!");
-            }
-            $manticore = new ManticoreConnector($ip, WORKER_PORT, null, -1);
+            $manticore = new ManticoreConnector($ip, $workerPort, null, -1);
             $manticore->setMaxAttempts(180);
             $rows = $manticore->showThreads();
 
