@@ -37,7 +37,7 @@ class ManticoreConnector
 
     public function setCustomClusterName($name)
     {
-        $this->clusterName = $name;
+        $this->clusterName = $name.'_cluster';
     }
 
     public function setMaxAttempts($maxAttempts): void
@@ -232,7 +232,7 @@ class ManticoreConnector
         $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS', $log);
         foreach ($indexStatus as $row) {
             if ($row["Variable_name"] === 'disk_chunks') {
-                return (int) $row["Value"];
+                return (int)$row["Value"];
             }
         }
         throw new \RuntimeException("Can't get chunks count");
