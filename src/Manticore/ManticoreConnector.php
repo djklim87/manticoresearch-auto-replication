@@ -19,9 +19,6 @@ class ManticoreConnector
     {
         $this->setMaxAttempts($maxAttempts);
 
-        if (is_array($clusterName)){
-            throw new \RuntimeException("Cluster as array");
-        }
         if (isset($clusterName)){
             $this->clusterName = $clusterName.'_cluster';
         }

@@ -99,7 +99,7 @@ class ManticoreJson
         exec('supervisorctl start searchd');
     }
 
-    public function checkNodesAvailability(Resources $resources, $port, $label, $attempts): void
+    public function checkNodesAvailability(Resources $resources, $port, $shortClusterName, $attempts): void
     {
         $nodes          = $resources->getPodsIp();
         $availableNodes = [];
@@ -120,7 +120,7 @@ class ManticoreJson
 
 
             try {
-                $connection = new ManticoreConnector($ip, $port, $label, $attempts);
+                $connection = new ManticoreConnector($ip, $port, $shortClusterName, $attempts);
                 if ( ! $connection->checkClusterName()) {
                     Analog::log("Cluster name mismatch at $ip");
                     continue;
