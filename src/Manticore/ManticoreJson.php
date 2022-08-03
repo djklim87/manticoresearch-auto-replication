@@ -10,23 +10,26 @@ class ManticoreJson
     private $conf = [];
     private string $path;
     private string $clusterName;
+    private int $binaryPort;
 
-    public function __construct($clusterName)
+    public function __construct($clusterName, $binaryPort = 9312)
     {
         $this->clusterName = $clusterName;
+        $this->binaryPort  = $binaryPort;
+
         if (defined('DEV')) {
             $this->conf = [
 
                 "clusters" => [
                     "m_cluster" => [
-                        "nodes" => "192.168.0.1:9312,92.168.0.1:9312",
+                        "nodes"   => "192.168.0.1:".$this->binaryPort.",92.168.0.1:".$this->binaryPort,
                         "options" => "",
                         "indexes" => ["pq", "tests"],
                     ],
                 ],
 
                 "indexes" => [
-                    "pq" => [
+                    "pq"    => [
                         "type" => "percolate",
                         "path" => "pq",
                     ],
@@ -63,7 +66,7 @@ class ManticoreJson
 
     public function getClusterNodes()
     {
-        if (!isset($this->conf['clusters'][$this->clusterName]['nodes'])) {
+        if ( ! isset($this->conf['clusters'][$this->clusterName]['nodes'])) {
             return [];
         }
         $nodes = $this->conf['clusters'][$this->clusterName]['nodes'];
@@ -74,19 +77,20 @@ class ManticoreJson
     public function updateNodesList(array $nodesList): void
     {
         Analog::log("Update nodes list ".json_encode($nodesList));
-        if ($nodesList !== []){
+        if ($nodesList !== []) {
             $newNodes = implode(',', $nodesList);
 
-            if (!isset($this->conf['clusters'][$this->clusterName]['nodes']) ||
-                $newNodes !== $this->conf['clusters'][$this->clusterName]['nodes']) {
-
+            if ( ! isset($this->conf['clusters'][$this->clusterName]['nodes'])
+                || $newNodes !== $this->conf['clusters'][$this->clusterName]['nodes']
+            ) {
                 $this->conf['clusters'][$this->clusterName]['nodes'] = $newNodes;
                 $this->save();
             }
         }
     }
 
-    public function getConf(){
+    public function getConf()
+    {
         return $this->conf;
     }
 
@@ -97,7 +101,7 @@ class ManticoreJson
 
     public function checkNodesAvailability(Resources $resources, $port, $label, $attempts): void
     {
-        $nodes = $resources->getPodsIp();
+        $nodes          = $resources->getPodsIp();
         $availableNodes = [];
 
         $skipSelf = true;
@@ -108,8 +112,8 @@ class ManticoreJson
             // Skip current node
 
             if ($hostname === gethostname()) {
-                if (!$skipSelf) {
-                    $availableNodes[] = $ip.':9312';
+                if ( ! $skipSelf) {
+                    $availableNodes[] = $ip.':'.$this->binaryPort;
                 }
                 continue;
             }
@@ -121,14 +125,13 @@ class ManticoreJson
                     Analog::log("Cluster name mismatch at $ip");
                     continue;
                 }
-                $availableNodes[] = $ip.':9312';
+                $availableNodes[] = $ip.':'.$this->binaryPort;
             } catch (\RuntimeException $exception) {
                 Analog::log("Node at $ip no more available\n".$exception->getMessage());
             }
         }
 
         $this->updateNodesList($availableNodes);
-
     }
 
     /**
