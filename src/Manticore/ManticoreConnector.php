@@ -19,16 +19,21 @@ class ManticoreConnector
     {
         $this->setMaxAttempts($maxAttempts);
 
-        if (isset($clusterName)){
+        if (isset($clusterName)) {
             $this->clusterName = $clusterName.'_cluster';
         }
 
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
-            $this->connection = new mysqli($host.':'.$port, '', '', '');
+            try {
+                $this->connection = new mysqli($host.':'.$port, '', '', '');
 
-            if ( ! $this->connection->connect_errno) {
-                break;
+                if ( ! $this->connection->connect_errno) {
+                    break;
+                }
+            } catch (\Exception $exception) {
+                Analog::error("Manticore connect exception ($host.':'.$port) ".$exception->getMessage());
             }
+
 
             sleep(1);
         }
