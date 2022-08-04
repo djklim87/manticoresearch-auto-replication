@@ -26,10 +26,14 @@ class ManticoreStreamsConnector extends ManticoreConnector
             }
         }
 
-        \Analog::warning("Tables mismatch. Expected ".implode(',', self::INDEX_LIST)
-            ." found ".implode(',', $inClusterIndexes));
+        $result = $matchesCount === count(self::INDEX_LIST);
 
-        return $matchesCount === count(self::INDEX_LIST);
+        if (!$result){
+            \Analog::warning("Tables mismatch. Expected ".implode(',', self::INDEX_LIST)
+                ." found ".implode(',', $inClusterIndexes));
+        }
+        
+        return $result;
     }
 
 
