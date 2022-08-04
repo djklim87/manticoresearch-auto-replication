@@ -2,9 +2,8 @@
 
 namespace Core\Mutex;
 
-use Core\Logger\Logger;
+use Analog\Analog;
 use Core\Manticore\ManticoreConnector;
-use mysqli;
 
 class Locker
 {
@@ -24,7 +23,7 @@ class Locker
     public function checkLock(): bool
     {
         if (!flock($this->fp, LOCK_EX | LOCK_NB)) {
-            Logger::log("Another process $this->name is already running");
+            Analog::log("Another process $this->name is already running");
             $this->unlock();
         }
 
@@ -37,15 +36,12 @@ class Locker
         exit($exitStatus);
     }
 
-    public function checkOptimizeLock($file): bool
+    public function checkOptimizeLock($file, $workerPort = 9306): bool
     {
         if ($this->optimizeLockFile !== null && file_exists($this->optimizeLockFile)) {
             $ip = file_get_contents($file);
 
-            if (!defined('WORKER_PORT')){
-                throw new \RuntimeException("WORKER_PORT is not defined!");
-            }
-            $manticore = new ManticoreConnector($ip, WORKER_PORT, null, -1);
+            $manticore = new ManticoreConnector($ip, $workerPort, null, -1);
             $manticore->setMaxAttempts(180);
             $rows = $manticore->showThreads();
 

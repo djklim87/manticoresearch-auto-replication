@@ -2,30 +2,43 @@
 
 namespace Core\K8s;
 
-
-use Core\Logger\Logger;
+use Analog\Analog;
 use Core\Notifications\NotificationInterface;
 
 class Resources
 {
-    private $label;
-    private $api;
-    private $notification;
-    private $pods;
+    private array $labels;
+    private ApiClient $api;
+    private NotificationInterface $notification;
+    private array $pods = [];
 
-    public function __construct(ApiClient $api, $label, NotificationInterface $notification)
+    public function __construct(ApiClient $api, array $labels, NotificationInterface $notification)
     {
-        $this->label        = $label;
+        $this->setLabels($labels);
         $this->api          = $api;
         $this->notification = $notification;
     }
 
+    private function setLabels(array $labels): void
+    {
+        $this->labels = $labels;
+    }
+
+    private function getLabels(): array
+    {
+        return $this->labels;
+    }
+
+
+    /**
+     * @throws \JsonException
+     */
     public function getPods(): array
     {
         if ( ! $this->pods) {
-            $pods = $this->api->getManticorePods($this->label);
+            $pods = $this->api->getManticorePods($this->getLabels());
             if ( ! isset($pods['items'])) {
-                Logger::log('K8s api don\'t respond');
+                Analog::log('K8s api don\'t respond');
                 exit(1);
             }
 
@@ -34,7 +47,7 @@ class Resources
                     $this->pods[] = $pod;
                 } else {
                     $this->notification->sendMessage("Bad pod phase for ".$pod['metadata']['name'].' phase '.$pod['status']['phase']);
-                    Logger::log('Error pod phase '.json_encode($pod));
+                    Analog::log('Error pod phase '.json_encode($pod));
                 }
             }
         }
@@ -42,11 +55,17 @@ class Resources
         return $this->pods;
     }
 
+    /**
+     * @throws \JsonException
+     */
     public function getActivePodsCount(): int
     {
         return count($this->getPods());
     }
 
+    /**
+     * @throws \JsonException
+     */
     public function getOldestActivePodName()
     {
         $currentPodHostname = gethostname();
@@ -66,6 +85,31 @@ class Resources
         return $pods[min(array_keys($pods))];
     }
 
+    public function getPodsIp(): array
+    {
+        if (defined('DEV') && DEV === true) {
+            return [];
+        }
+        $ips = [];
+        $this->getPods();
+
+        $hostname = gethostname();
+        foreach ($this->pods as $pod) {
+            if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
+                if (isset($pod['status']['podIP'])) {
+                    $ips[$pod['metadata']['name']] = $pod['status']['podIP'];
+                } elseif ($pod['metadata']['name'] === $hostname) {
+                    $selfIp = getHostByName($hostname);
+                    if ( ! empty($selfIp)) {
+                        $ips[$hostname] = $selfIp;
+                    }
+                }
+            }
+        }
+
+        return $ips;
+    }
+
     public function getPodsHostnames(): array
     {
         if (defined('DEV') && DEV === true) {
@@ -81,23 +125,6 @@ class Resources
         }
 
         return $hostnames;
-    }
-
-    public function getPodsIPs(): array
-    {
-        if (defined('DEV') && DEV === true) {
-            return [];
-        }
-        $ips = [];
-        $this->getPods();
-
-        foreach ($this->pods as $pod) {
-            if ($pod['status']['phase'] === 'Running' || $pod['status']['phase'] === 'Pending') {
-                $ips[] = $pod['status']['podIP'];
-            }
-        }
-
-        return $ips;
     }
 
 
@@ -139,6 +166,6 @@ class Resources
         $hostname = gethostname();
         $parts    = explode("-", $hostname);
 
-        return (int) array_pop($parts);
+        return (int)array_pop($parts);
     }
 }

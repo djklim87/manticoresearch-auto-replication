@@ -2,31 +2,40 @@
 
 namespace Core\Manticore;
 
-use Core\Logger\Logger;
+use Analog\Analog;
 use mysqli;
 
 class ManticoreConnector
 {
-    public const INDEX_TYPE_PERCOLATE = 'percolate';
-    public const INDEX_TYPE_RT = 'rt';
+
     protected int $maxAttempts;
     protected mysqli $connection;
-    protected string $clusterName;
+    protected string $clusterName = "";
     protected string $rtInclude;
     protected $fields;
     protected array $searchdStatus = [];
 
-    public function __construct($host, $port, $label, $maxAttempts)
+    public function __construct($host, $port, $clusterName, $maxAttempts)
     {
         $this->setMaxAttempts($maxAttempts);
-        $this->clusterName = $label.'_cluster';
+
+        if (isset($clusterName)) {
+            $this->clusterName = $clusterName.'_cluster';
+        }
+
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
         for ($i = 0; $i <= $this->maxAttempts; $i++) {
-            $this->connection = new mysqli($host.':'.$port, '', '', '');
+            try {
+                $this->connection = new mysqli($host.':'.$port, '', '', '');
 
-            if ( ! $this->connection->connect_errno) {
-                break;
+                if ( ! $this->connection->connect_errno) {
+                    break;
+                }
+            } catch (\Exception $exception) {
+                Analog::error("Manticore connect exception ($host:$port) ".$exception->getMessage());
             }
+
 
             sleep(1);
         }
@@ -38,7 +47,7 @@ class ManticoreConnector
 
     public function setCustomClusterName($name)
     {
-        $this->clusterName = $name;
+        $this->clusterName = $name.'_cluster';
     }
 
     public function setMaxAttempts($maxAttempts): void
@@ -87,13 +96,6 @@ class ManticoreConnector
                 && $this->searchdStatus['cluster_name'] === $this->clusterName) ?? false;
     }
 
-    /** @deprecated need to add default indexes for checking it */
-    public function checkIsTablesInCluster(): bool
-    {
-        return $this->searchdStatus['cluster_'.$this->clusterName.'_indexes'] === "pq,tests"
-            || $this->searchdStatus['cluster_'.$this->clusterName.'_indexes'] === "tests,pq";
-    }
-
     public function getViewNodes()
     {
         if ($this->searchdStatus === []) {
@@ -132,7 +134,7 @@ class ManticoreConnector
         if ($notInClusterTables !== []) {
             foreach ($notInClusterTables as $table) {
                 $this->addTableToCluster($table);
-                Logger::log("Table $table was added into cluster");
+                Analog::log("Table $table was added into cluster");
             }
         }
     }
@@ -192,29 +194,6 @@ class ManticoreConnector
         return true;
     }
 
-    public function createTable($tableName, $type): bool
-    {
-        if ( ! in_array($type, ['percolate', 'rt'])) {
-            throw new \RuntimeException('Wrong table type '.$type);
-        }
-
-        if ( ! $this->fields) {
-            throw new \RuntimeException('Fields was not initialized '.$tableName);
-        }
-
-        if ( ! $this->rtInclude) {
-            throw new \RuntimeException('RT include was not initialized '.$tableName);
-        }
-
-        $this->query("CREATE TABLE IF NOT EXISTS $tableName (".implode(',',
-                $this->fields).") type='$type' $this->rtInclude");
-
-        if ($this->getConnectionError()) {
-            return false;
-        }
-
-        return true;
-    }
 
     public function addTableToCluster($tableName, $log = true): bool
     {
@@ -230,86 +209,16 @@ class ManticoreConnector
         return true;
     }
 
-    public function connectAndCreate(): bool
-    {
-        if ($this->checkClusterName()) {
-            if ( ! $this->checkIsTablesInCluster()) {
-                if ($this->isTableExist('pq') && $this->isTableExist('tests')
-                    && $this->addTableToCluster('pq')
-                    && $this->addTableToCluster('tests')
-                ) {
-                    return true;
-                }
-
-                if ($this->createTable('pq', self::INDEX_TYPE_PERCOLATE)
-                    && $this->addTableToCluster('pq')
-                    && $this->createTable('tests', self::INDEX_TYPE_RT)
-                    && $this->addTableToCluster('tests')
-                ) {
-                    return true;
-                }
-
-                return false;
-            }
-
-            return true;
-        }
-
-        if ($this->createCluster()
-            && $this->createTable('pq', self::INDEX_TYPE_PERCOLATE)
-            && $this->addTableToCluster('pq')
-            && $this->createTable('tests', self::INDEX_TYPE_RT)
-            && $this->addTableToCluster('tests')
-        ) {
-            return true;
-        }
-
-        return false;
-    }
-
-    public function setFields($rules)
-    {
-        $this->rtInclude = $this->getRtInclude();
-        $fields          = ['`invalidjson` text indexed'];
-        $envFields       = explode("|", $rules);
-        foreach ($envFields as $field) {
-            $field = explode("=", $field);
-            if ( ! empty($field[0]) && ! empty($field[1])) {
-                if ($field[0] === "text") {
-                    $fields[] = "`".$field[1]."` ".$field[0]." indexed";
-                } elseif ($field[0] === 'url') {
-                    $fields[] = "`{$field[1]}_host_path` text indexed";
-                    $fields[] = "`{$field[1]}_query` text indexed";
-                    $fields[] = "`{$field[1]}_anchor` text indexed";
-                } else {
-                    $fields[] = "`".$field[1]."` ".$field[0];
-                }
-            }
-        }
-
-        $this->fields = $fields;
-    }
-
-    protected function getRtInclude()
-    {
-        $conf = '/etc/manticoresearch/conf_mount/rt_include.conf';
-        if (file_exists($conf)) {
-            return file_get_contents($conf);
-        }
-
-        return "charset_table = 'cjk, non_cjk'";
-    }
-
     protected function query($sql, $logQuery = true, $attempts = 0)
     {
         $result = $this->connection->query($sql);
 
         if ($logQuery) {
-            Logger::log('Query: '.$sql);
+            Analog::log('Query: '.$sql);
         }
 
         if ($this->getConnectionError()) {
-            Logger::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
+            Analog::log("Error until query processing. Query: ".$sql."\n. Error: ".$this->getConnectionError());
             if ($attempts > $this->maxAttempts) {
                 throw new \RuntimeException("Can't process query ".$sql);
             }
@@ -333,7 +242,7 @@ class ManticoreConnector
         $indexStatus = $this->fetch('SHOW INDEX '.$index.' STATUS', $log);
         foreach ($indexStatus as $row) {
             if ($row["Variable_name"] === 'disk_chunks') {
-                return (int) $row["Value"];
+                return (int)$row["Value"];
             }
         }
         throw new \RuntimeException("Can't get chunks count");
@@ -350,7 +259,7 @@ class ManticoreConnector
         return $this->fetch('SHOW THREADS option format=all', $log);
     }
 
-    private function fetch($query, $log = true)
+    protected function fetch($query, $log = true)
     {
         $result = $this->query($query, $log);
 

@@ -9,8 +9,8 @@ class Cache
     public const CHECKED_WORKERS = 'checked_workers';
     public const CHECKED_INDEXES = 'checked_indexes';
 
-    private $cacheStorageFile = DIRECTORY_SEPARATOR . 'tmp' . DIRECTORY_SEPARATOR . 'index_hash.dat';
-    private $cache = [];
+    private string $cacheStorageFile = DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR.'index_hash.dat';
+    private array $cache = [];
 
     public function __construct()
     {

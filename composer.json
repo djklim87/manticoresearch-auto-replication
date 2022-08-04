@@ -15,7 +15,8 @@
     "guzzlehttp/guzzle": "^7.3",
     "ext-mysqli": "*",
     "ext-json": "*",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "analog/analog": "^1.0"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest"
