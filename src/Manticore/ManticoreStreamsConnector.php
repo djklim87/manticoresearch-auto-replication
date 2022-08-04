@@ -7,7 +7,7 @@ class ManticoreStreamsConnector extends ManticoreConnector
     public const INDEX_TYPE_PERCOLATE = 'percolate';
     public const INDEX_TYPE_RT = 'rt';
 
-    private const INDEX_LIST = ['pq', 'test'];
+    private const INDEX_LIST = ['pq', 'tests'];
 
     public function checkIsTablesInCluster(): bool
     {
